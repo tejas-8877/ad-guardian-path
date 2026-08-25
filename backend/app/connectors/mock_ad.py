@@ -34,17 +34,6 @@ def _sid(rid: int) -> str:
     return f"S-1-5-21-1004336348-1177238915-682003330-{rid}"
 
 
-def _user(rid, sam, name, ou="Users", **kw) -> ADPrincipal:
-    return ADPrincipal(
-        object_sid=_sid(rid),
-        dn=f"CN={name},OU={ou},{BASE}",
-        sam_account_name=sam,
-        display_name=name,
-        principal_type=PrincipalType.USER,
-        password_last_set=kw.pop("pwd_age_days", None) and _NOW - timedelta(days=kw.pop("_", 0) or 0),
-        **kw,
-    )
-
 
 _USERS: list[ADPrincipal] = [
     ADPrincipal(_sid(1103), f"CN=Jane Doe,OU=Staff,{BASE}", "j.doe", "Jane Doe",
