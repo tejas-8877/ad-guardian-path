@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AssetsRouteImport } from './routes/assets'
+import { Route as AttackPathsRouteImport } from './routes/attack-paths'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FindingsRouteImport } from './routes/findings'
+import { Route as MalwareRouteImport } from './routes/malware'
+import { Route as MyHygieneRouteImport } from './routes/my-hygiene'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssetsRoute = AssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttackPathsRoute = AttackPathsRouteImport.update({
+  id: '/attack-paths',
+  path: '/attack-paths',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FindingsRoute = FindingsRouteImport.update({
+  id: '/findings',
+  path: '/findings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MalwareRoute = MalwareRouteImport.update({
+  id: '/malware',
+  path: '/malware',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyHygieneRoute = MyHygieneRouteImport.update({
+  id: '/my-hygiene',
+  path: '/my-hygiene',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assets': typeof AssetsRoute
+  '/attack-paths': typeof AttackPathsRoute
+  '/dashboard': typeof DashboardRoute
+  '/findings': typeof FindingsRoute
+  '/malware': typeof MalwareRoute
+  '/my-hygiene': typeof MyHygieneRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assets': typeof AssetsRoute
+  '/attack-paths': typeof AttackPathsRoute
+  '/dashboard': typeof DashboardRoute
+  '/findings': typeof FindingsRoute
+  '/malware': typeof MalwareRoute
+  '/my-hygiene': typeof MyHygieneRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/assets': typeof AssetsRoute
+  '/attack-paths': typeof AttackPathsRoute
+  '/dashboard': typeof DashboardRoute
+  '/findings': typeof FindingsRoute
+  '/malware': typeof MalwareRoute
+  '/my-hygiene': typeof MyHygieneRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/assets'
+    | '/attack-paths'
+    | '/dashboard'
+    | '/findings'
+    | '/malware'
+    | '/my-hygiene'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/assets'
+    | '/attack-paths'
+    | '/dashboard'
+    | '/findings'
+    | '/malware'
+    | '/my-hygiene'
+  id:
+    | '__root__'
+    | '/'
+    | '/assets'
+    | '/attack-paths'
+    | '/dashboard'
+    | '/findings'
+    | '/malware'
+    | '/my-hygiene'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AssetsRoute: typeof AssetsRoute
+  AttackPathsRoute: typeof AttackPathsRoute
+  DashboardRoute: typeof DashboardRoute
+  FindingsRoute: typeof FindingsRoute
+  MalwareRoute: typeof MalwareRoute
+  MyHygieneRoute: typeof MyHygieneRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +130,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assets': {
+      id: '/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof AssetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attack-paths': {
+      id: '/attack-paths'
+      path: '/attack-paths'
+      fullPath: '/attack-paths'
+      preLoaderRoute: typeof AttackPathsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/findings': {
+      id: '/findings'
+      path: '/findings'
+      fullPath: '/findings'
+      preLoaderRoute: typeof FindingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/malware': {
+      id: '/malware'
+      path: '/malware'
+      fullPath: '/malware'
+      preLoaderRoute: typeof MalwareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-hygiene': {
+      id: '/my-hygiene'
+      path: '/my-hygiene'
+      fullPath: '/my-hygiene'
+      preLoaderRoute: typeof MyHygieneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AssetsRoute: AssetsRoute,
+  AttackPathsRoute: AttackPathsRoute,
+  DashboardRoute: DashboardRoute,
+  FindingsRoute: FindingsRoute,
+  MalwareRoute: MalwareRoute,
+  MyHygieneRoute: MyHygieneRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
