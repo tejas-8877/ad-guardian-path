@@ -25,6 +25,7 @@ export const Route = createFileRoute("/attack-paths")({
 function AttackPathsPage() {
   const [activeId, setActiveId] = useState(ATTACK_PATHS[0]?.id ?? "");
   const active = ATTACK_PATHS.find((p) => p.id === activeId) ?? ATTACK_PATHS[0];
+  if (!active) return null;
 
   return (
     <AppShell

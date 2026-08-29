@@ -38,7 +38,7 @@ function DashboardPage() {
     severity: s,
     count: FINDINGS.filter((f) => f.severity === s).length,
   }));
-  const risk = RISK_TREND[RISK_TREND.length - 1].score;
+  const risk = RISK_TREND[RISK_TREND.length - 1]?.score ?? 0;
   const topRules = Object.entries(
     FINDINGS.reduce<Record<string, number>>((acc, f) => {
       acc[f.rule] = (acc[f.rule] ?? 0) + 1;
@@ -56,7 +56,7 @@ function DashboardPage() {
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="Domain risk score" value={risk} tone="critical" hint="0 = clean, 100 = critical" />
-        <StatTile label="Open findings" value={FINDINGS.length} hint={`${bySeverity[0].count} critical`} />
+        <StatTile label="Open findings" value={FINDINGS.length} hint={`${bySeverity[0]?.count ?? 0} critical`} />
         <StatTile label="Tier-0 paths" value={ATTACK_PATHS.length} tone="primary" hint="Reachable privilege escalations" />
         <StatTile
           label="Objects collected"

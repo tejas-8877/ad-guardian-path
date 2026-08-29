@@ -21,8 +21,9 @@ export const Route = createFileRoute("/my-hygiene")({
 
 function HygienePage() {
   const { user } = useAuth();
-  const principal = PRINCIPALS.find((p) => p.objectSid === user?.objectSid);
-  const mine = FINDINGS.filter((f) => f.principalSid === user?.objectSid);
+  if (!user) return null;
+  const principal = PRINCIPALS.find((p) => p.objectSid === user.objectSid);
+  const mine = FINDINGS.filter((f) => f.principalSid === user.objectSid);
 
   return (
     <AppShell
@@ -31,7 +32,7 @@ function HygienePage() {
       requiredPermission="view:own_hygiene"
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Account" value={user?.samAccountName ?? "—"} hint={ROLE_LABEL[user!.role]} />
+        <StatTile label="Account" value={user.samAccountName} hint={ROLE_LABEL[user.role]} />
         <StatTile
           label="Password age"
           value={principal?.passwordAgeDays ?? "—"}
