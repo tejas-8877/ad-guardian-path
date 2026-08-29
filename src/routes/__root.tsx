@@ -109,7 +109,9 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        {/* AuthProvider lives in the shell so every route — including error and
+            not-found boundaries — renders inside the auth context. */}
+        <AuthProvider>{children}</AuthProvider>
         <Scripts />
       </body>
     </html>
@@ -121,10 +123,8 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </AuthProvider>
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
     </QueryClientProvider>
   );
 }
