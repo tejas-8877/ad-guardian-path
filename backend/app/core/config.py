@@ -27,12 +27,46 @@ class Settings(BaseSettings):
     ad_domain: str = "corp.local"
     ad_domain_dns: str = "corp.local"
     ad_base_dn: str = "DC=corp,DC=local"
-    ad_server_uri: str = "ldaps://dc01.corp.local:636"
+    # Either provide a full URI (ad_server_uri) or host/port/protocol; the
+    # effective URI is resolved by `ldap_uri` below. Nothing is hardcoded to a
+    # specific lab: every value is overridable via ADSHIELD_* env vars.
+    ad_server_uri: str | None = None
+    ad_host: str | None = None
+    ad_port: int | None = None
+    ad_protocol: Literal["ldaps", "ldap"] = "ldaps"
     ad_use_ssl: bool = True
+    ad_verify_certificate: bool = True
     ad_ca_cert_path: str | None = None
+    ad_connect_timeout_seconds: int = 10
+    ad_page_size: int = 500
     # Least-privilege, read-only service account used for collection only.
-    ad_service_user: str = "CN=svc-adshield-ro,OU=Service Accounts,DC=corp,DC=local"
+    ad_service_user: str = ""
     ad_service_password: SecretStr = SecretStr("")
+
+    # --- derived helpers ---
+    @property
+    def ldap_port(self) -> int:
+        if self.ad_port:
+            return self.ad_port
+        return 636 if self.ad_protocol == "ldaps" else 389
+
+    @property
+    def ldap_uri(self) -> str:
+        """Effective LDAP(S) URI, from ad_server_uri or host/port/protocol."""
+        if self.ad_server_uri:
+            return self.ad_server_uri
+        host = self.ad_host or self.ad_domain_dns
+        return f"{self.ad_protocol}://{host}:{self.ldap_port}"
+
+    @property
+    def ldap_host(self) -> str:
+        uri = self.ldap_uri
+        return uri.split("://", 1)[-1].rsplit(":", 1)[0]
+
+    @property
+    def use_ssl(self) -> bool:
+        return self.ad_use_ssl and self.ldap_uri.startswith("ldaps://")
+
 
     # --- RBAC mapping: AD group DN/name -> ADShield role ---
     role_security_admin_groups: list[str] = Field(default_factory=lambda: ["ADShield-SOC"])
