@@ -17,6 +17,7 @@ from typing import Iterable
 
 from app.connectors.base import (
     ADAuthenticationError,
+    ConnectorHealth,
     ADConnector,
     ADEdge,
     ADIdentity,
@@ -90,6 +91,12 @@ _GPOS: list[ADPrincipal] = [
                 "Default Domain Policy", "Default Domain Policy", PrincipalType.GPO),
 ]
 
+_OUS: list[ADPrincipal] = [
+    ADPrincipal(f"OU:{name}", f"OU={name},{BASE}", name, name, PrincipalType.OU)
+    for name in ("Staff", "IT", "Service Accounts", "Servers", "Workstations",
+                 "Domain Controllers", "Disabled")
+]
+
 _EDGES: list[ADEdge] = [
     ADEdge(_sid(1103), _sid(1403), EdgeType.MEMBER_OF),
     ADEdge(_sid(1105), _sid(1402), EdgeType.MEMBER_OF),
@@ -157,5 +164,20 @@ class MockADConnector(ADConnector):
     def get_gpos(self) -> Iterable[ADPrincipal]:
         return list(_GPOS)
 
+    def get_ous(self) -> Iterable[ADPrincipal]:
+        return list(_OUS)
+
     def get_edges(self) -> Iterable[ADEdge]:
         return list(_EDGES)
+
+    def health(self) -> ConnectorHealth:
+        return ConnectorHealth(
+            connected=self._connected,
+            connector="mock",
+            domain=self.domain,
+            server=f"mock-dc01.{self.domain}",
+            protocol="MOCK",
+            port=0,
+            base_dn=BASE,
+            latency_ms=0.0,
+        )
