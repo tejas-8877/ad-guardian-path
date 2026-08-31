@@ -91,6 +91,29 @@ class ADAuthenticationError(RuntimeError):
     """Credentials rejected by the Domain Controller."""
 
 
+class ADConfigurationError(RuntimeError):
+    """Connector is misconfigured (missing bind account, bad Base DN, ...)."""
+
+
+class ADPermissionError(RuntimeError):
+    """The bind account lacks the read rights required for collection."""
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectorHealth:
+    """Non-sensitive connection status surfaced by GET /api/ad/health."""
+
+    connected: bool
+    connector: str
+    domain: str
+    server: str
+    protocol: str
+    port: int
+    base_dn: str
+    latency_ms: float | None = None
+    error: str | None = None
+
+
 class ADConnector(ABC):
     """Contract implemented by MockADConnector and RealADConnector."""
 
@@ -132,9 +155,26 @@ class ADConnector(ABC):
     @abstractmethod
     def get_gpos(self) -> Iterable[ADPrincipal]: ...
 
+    def get_ous(self) -> Iterable[ADPrincipal]:
+        """Organizational Units. Optional: connectors may return nothing."""
+        return []
+
     @abstractmethod
     def get_edges(self) -> Iterable[ADEdge]:
         """Membership + ACL/ACE-derived relationships for the graph engine."""
+
+    # --- diagnostics -----------------------------------------------------
+    def health(self) -> ConnectorHealth:
+        """Cheap, credential-free connection report. Never returns secrets."""
+        return ConnectorHealth(
+            connected=True,
+            connector=type(self).__name__,
+            domain=self.domain,
+            server=self.domain,
+            protocol="MOCK",
+            port=0,
+            base_dn="",
+        )
 
     # --- convenience ---------------------------------------------------
     def collect_all(self) -> tuple[list[ADPrincipal], list[ADEdge]]:
@@ -143,5 +183,6 @@ class ADConnector(ABC):
             *self.get_groups(),
             *self.get_computers(),
             *self.get_gpos(),
+            *self.get_ous(),
         ]
         return principals, list(self.get_edges())
