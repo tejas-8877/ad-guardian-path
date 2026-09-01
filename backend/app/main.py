@@ -9,7 +9,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from app.api.routes import assets, attack_paths, auth, dashboard, endpoint, findings
+from app.api.routes import (
+    ad,
+    assets,
+    attack_paths,
+    auth,
+    dashboard,
+    endpoint,
+    endpoints,
+    findings,
+)
 from app.core.config import get_settings
 from app.services import state
 
@@ -57,6 +66,8 @@ def create_app() -> FastAPI:
         findings.router,
         attack_paths.router,
         endpoint.router,
+        ad.router,
+        endpoints.router,
     ):
         app.include_router(router, prefix="/api")
 

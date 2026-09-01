@@ -79,6 +79,7 @@ class GraphNode(BaseModel):
 
 
 class GraphEdge(BaseModel):
+    id: str | None = None
     source: str
     target: str
     type: str
