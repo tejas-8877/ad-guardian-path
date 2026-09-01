@@ -5,8 +5,19 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import RequireAttackPaths
-from app.schemas.domain import AttackPathOut, GraphEdge, GraphNode, GraphOut, PathStepOut
-from app.services import state
+from app.schemas.domain import (
+    AttackPathOut,
+    GraphEdge,
+    GraphMetricsOut,
+    GraphNode,
+    GraphOut,
+    PathStepOut,
+    RemovableEdgeOut,
+    SimulationCompareRequest,
+    SimulationOut,
+    SimulationRequest,
+)
+from app.services import simulation, state
 from app.services.graph import AttackPath
 
 router = APIRouter(prefix="/attack-paths", tags=["attack-paths"])
@@ -88,7 +99,74 @@ def graph_export(_user: RequireAttackPaths) -> GraphOut:
             for p in snapshot.principals
         ],
         edges=[
-            GraphEdge(source=e.source_sid, target=e.target_sid, type=e.edge_type.value)
+            GraphEdge(
+                id=simulation.edge_id(e),
+                source=e.source_sid,
+                target=e.target_sid,
+                type=e.edge_type.value,
+            )
             for e in snapshot.edges
         ],
     )
+
+
+@router.get("/edges", response_model=list[RemovableEdgeOut])
+def list_edges(_user: RequireAttackPaths) -> list[RemovableEdgeOut]:
+    """Relationships an analyst can select in the Remediation Simulator."""
+    snap = state.current()
+    return [RemovableEdgeOut(**e) for e in simulation.removable_edges(snap.principals, snap.edges)]
+
+
+def _metrics(m: simulation.GraphMetrics) -> GraphMetricsOut:
+    return GraphMetricsOut(**vars(m))
+
+
+def _simulation_out(result: simulation.SimulationResult) -> SimulationOut:
+    return SimulationOut(
+        before=_metrics(result.before),
+        after=_metrics(result.after),
+        simulation={
+            "removed_edges": result.removed_edges,
+            "removed_edge": result.removed_edges[0]["label"] if result.removed_edges else None,
+            "action": "remove",
+            "reason": result.reason,
+        },
+        risk_reduction=result.risk_reduction,
+        risk_reduction_pct=result.risk_reduction_pct,
+        paths_eliminated=result.paths_eliminated,
+        tier0_exposure_reduction=result.tier0_exposure_reduction,
+        eliminated_paths=[_to_out(p) for p in result.eliminated_paths],
+        remaining_paths=[_to_out(p) for p in result.remaining_paths],
+        notice=result.notice,
+    )
+
+
+@router.post("/simulate-remediation", response_model=SimulationOut)
+def simulate_remediation(payload: SimulationRequest, _user: RequireAttackPaths) -> SimulationOut:
+    """SIMULATION ONLY - the directory and the stored graph are never modified."""
+    snap = state.current()
+    try:
+        result = simulation.simulate_removal(
+            snap.principals, snap.edges, snap.findings, payload.targets(), payload.reason
+        )
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    return _simulation_out(result)
+
+
+@router.post("/compare-remediations", response_model=list[SimulationOut])
+def compare_remediations(
+    payload: SimulationCompareRequest, _user: RequireAttackPaths
+) -> list[SimulationOut]:
+    snap = state.current()
+    if not payload.candidates:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No candidates supplied")
+    try:
+        results = simulation.compare_remediations(
+            snap.principals, snap.edges, snap.findings, payload.candidates
+        )
+    except (LookupError, ValueError) as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    return [_simulation_out(r) for r in results]

@@ -10,8 +10,11 @@ Security notes:
 
 from __future__ import annotations
 
+import logging
+import socket
 import ssl
 import struct
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Iterator
 
@@ -20,7 +23,10 @@ from ldap3.core.exceptions import LDAPBindError, LDAPException
 
 from app.connectors.base import (
     ADAuthenticationError,
+    ADConfigurationError,
     ADConnectionError,
+    ADPermissionError,
+    ConnectorHealth,
     ADConnector,
     ADEdge,
     ADIdentity,
@@ -29,6 +35,8 @@ from app.connectors.base import (
     PrincipalType,
 )
 from app.core.config import Settings
+
+log = logging.getLogger("adshield.connector.real")
 
 # --- userAccountControl flags ---
 UAC_ACCOUNTDISABLE = 0x0002
@@ -62,6 +70,7 @@ GROUP_ATTRS = [
     "adminCount", "member", "memberOf", "description", "nTSecurityDescriptor",
 ]
 GPO_ATTRS = ["objectGUID", "distinguishedName", "displayName", "nTSecurityDescriptor"]
+OU_ATTRS = ["objectGUID", "distinguishedName", "name", "description", "nTSecurityDescriptor"]
 
 _AD_EPOCH = datetime(1601, 1, 1, tzinfo=timezone.utc)
 
@@ -99,18 +108,64 @@ class RealADConnector(ADConnector):
         self._dn_to_sid: dict[str, str] = {}
 
     # --- lifecycle -----------------------------------------------------
+    def _validate_config(self) -> None:
+        s = self._settings
+        if not s.ad_base_dn:
+            raise ADConfigurationError("ADSHIELD_AD_BASE_DN is not configured.")
+        if not s.ad_service_user or not s.ad_service_password.get_secret_value():
+            raise ADConfigurationError(
+                "A read-only bind account is required: set ADSHIELD_AD_SERVICE_USER "
+                "and ADSHIELD_AD_SERVICE_PASSWORD."
+            )
+        if s.use_ssl and s.ad_verify_certificate and s.environment != "dev" and not s.ad_ca_cert_path:
+            raise ADConfigurationError(
+                "Certificate validation is enabled but ADSHIELD_AD_CA_CERT_PATH is unset."
+            )
+
     def _server(self) -> Server:
         s = self._settings
-        validate = ssl.CERT_REQUIRED if s.environment != "dev" else ssl.CERT_OPTIONAL
+        validate = ssl.CERT_REQUIRED if s.ad_verify_certificate else ssl.CERT_NONE
         tls = Tls(
             validate=validate,
             version=ssl.PROTOCOL_TLS_CLIENT,
             ca_certs_file=s.ad_ca_cert_path,
         )
-        return Server(s.ad_server_uri, use_ssl=s.ad_use_ssl, tls=tls, get_info=ALL)
+        return Server(
+            s.ldap_uri,
+            use_ssl=s.use_ssl,
+            tls=tls if s.use_ssl else None,
+            get_info=ALL,
+            connect_timeout=s.ad_connect_timeout_seconds,
+        )
+
+    def _translate(self, exc: Exception) -> Exception:
+        """Map raw LDAP/TLS/socket failures onto explicit, actionable errors.
+
+        Never includes credentials - only the failure class and the target URI.
+        """
+        s = self._settings
+        text = str(exc)
+        lowered = text.lower()
+        target = f"{s.ldap_uri} (baseDN={s.ad_base_dn})"
+        if isinstance(exc, LDAPBindError) or "invalidcredentials" in lowered:
+            return ADAuthenticationError(f"LDAP bind rejected by {s.ldap_host}: invalid service-account credentials.")
+        if "certificate" in lowered or "ssl" in lowered or "tls" in lowered:
+            return ADConnectionError(f"TLS/certificate verification failed for {target}: {text}")
+        if "name or service not known" in lowered or "getaddrinfo" in lowered or isinstance(exc, socket.gaierror):
+            return ADConnectionError(f"DNS resolution failed for {s.ldap_host}.")
+        if "timed out" in lowered or "timeout" in lowered:
+            return ADConnectionError(f"Connection to {target} timed out after {s.ad_connect_timeout_seconds}s.")
+        if "insufficientaccessrights" in lowered or "insufficient access" in lowered:
+            return ADPermissionError("The bind account lacks read rights (needs Read + Read Security).")
+        if "nosuchobject" in lowered or "invaliddnsyntax" in lowered:
+            return ADConfigurationError(f"Invalid Base DN: {s.ad_base_dn}")
+        if "socket" in lowered or "connection refused" in lowered or "unreachable" in lowered:
+            return ADConnectionError(f"Domain Controller unavailable at {s.ldap_uri}.")
+        return ADConnectionError(f"LDAP error against {target}: {text}")
 
     def connect(self) -> None:
         s = self._settings
+        self._validate_config()
         try:
             self._conn = Connection(
                 self._server(),
@@ -120,9 +175,42 @@ class RealADConnector(ADConnector):
                 auto_bind=True,
                 raise_exceptions=True,
                 read_only=True,
+                receive_timeout=s.ad_connect_timeout_seconds,
             )
-        except LDAPException as exc:
-            raise ADConnectionError(f"LDAPS bind failed: {exc}") from exc
+            log.info(
+                "ad.connect.success server=%s protocol=%s port=%s base_dn=%s",
+                s.ldap_host, "LDAPS" if s.use_ssl else "LDAP", s.ldap_port, s.ad_base_dn,
+            )
+        except (LDAPException, OSError) as exc:
+            log.error("ad.connect.failed server=%s error=%s", s.ldap_host, exc)
+            raise self._translate(exc) from exc
+
+    def health(self) -> ConnectorHealth:
+        s = self._settings
+        started = time.perf_counter()
+        error: str | None = None
+        connected = False
+        try:
+            if self._conn is None or not self._conn.bound:
+                self.connect()
+            # Cheap round-trip that proves the Base DN is readable.
+            self.conn.search(
+                s.ad_base_dn, "(objectClass=*)", search_scope="BASE", attributes=["objectClass"]
+            )
+            connected = True
+        except Exception as exc:  # noqa: BLE001 - surfaced, never swallowed
+            error = str(exc)
+        return ConnectorHealth(
+            connected=connected,
+            connector="real",
+            domain=s.ad_domain,
+            server=s.ldap_host,
+            protocol="LDAPS" if s.use_ssl else "LDAP",
+            port=s.ldap_port,
+            base_dn=s.ad_base_dn,
+            latency_ms=round((time.perf_counter() - started) * 1000, 2),
+            error=error,
+        )
 
     def close(self) -> None:
         if self._conn is not None:
@@ -192,16 +280,20 @@ class RealADConnector(ADConnector):
 
     # --- collection ----------------------------------------------------
     def _search(self, ldap_filter: str, attrs: list[str]) -> Iterator[object]:
-        for entry in self.conn.extend.standard.paged_search(
-            self._base_dn,
-            ldap_filter,
-            search_scope=SUBTREE,
-            attributes=attrs,
-            paged_size=500,
-            generator=True,
-        ):
-            if entry.get("type") == "searchResEntry":
-                yield entry
+        try:
+            for entry in self.conn.extend.standard.paged_search(
+                self._base_dn,
+                ldap_filter,
+                search_scope=SUBTREE,
+                attributes=attrs,
+                paged_size=self._settings.ad_page_size,
+                generator=True,
+            ):
+                if entry.get("type") == "searchResEntry":
+                    yield entry
+        except (LDAPException, OSError) as exc:
+            log.error("ad.search.failed filter=%s error=%s", ldap_filter, exc)
+            raise self._translate(exc) from exc
 
     def _principal(self, entry: dict, ptype: PrincipalType) -> ADPrincipal:
         a = entry["attributes"]
@@ -213,8 +305,8 @@ class RealADConnector(ADConnector):
         return ADPrincipal(
             object_sid=sid,
             dn=dn,
-            sam_account_name=str(a.get("sAMAccountName") or a.get("displayName") or dn),
-            display_name=str(a.get("displayName") or a.get("sAMAccountName") or dn),
+            sam_account_name=str(a.get("sAMAccountName") or a.get("name") or a.get("displayName") or dn),
+            display_name=str(a.get("displayName") or a.get("name") or a.get("sAMAccountName") or dn),
             principal_type=ptype,
             enabled=not bool(uac & UAC_ACCOUNTDISABLE),
             is_admin_count=bool(a.get("adminCount")),
@@ -249,6 +341,12 @@ class RealADConnector(ADConnector):
         return [
             self._principal(e, PrincipalType.GPO)
             for e in self._search("(objectClass=groupPolicyContainer)", GPO_ATTRS)
+        ]
+
+    def get_ous(self) -> Iterable[ADPrincipal]:
+        return [
+            self._principal(e, PrincipalType.OU)
+            for e in self._search("(objectClass=organizationalUnit)", OU_ATTRS)
         ]
 
     def get_edges(self) -> Iterable[ADEdge]:

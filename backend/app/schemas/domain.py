@@ -79,6 +79,7 @@ class GraphNode(BaseModel):
 
 
 class GraphEdge(BaseModel):
+    id: str | None = None
     source: str
     target: str
     type: str
@@ -126,3 +127,118 @@ class ScanResultOut(BaseModel):
     indicators: list[str]
     pe_info: dict[str, Any] | None
     sections: list[dict[str, Any]]
+
+
+# --- AD connection / collection ---------------------------------------
+class ADHealthOut(BaseModel):
+    connected: bool
+    connector: str
+    domain: str
+    server: str
+    protocol: str
+    port: int
+    base_dn: str
+    latency_ms: float | None = None
+    error: str | None = None
+
+
+class CollectionStatsOut(BaseModel):
+    status: str
+    connector: str
+    domain: str
+    users: int
+    groups: int
+    computers: int
+    gpos: int
+    ous: int
+    relationships: int
+    findings: int
+    risk_score: int
+    duration_ms: int
+    collected_at: datetime
+
+
+# --- remediation simulator ---------------------------------------------
+class RemovableEdgeOut(BaseModel):
+    edge_id: str
+    source_sid: str
+    source_name: str
+    target_sid: str
+    target_name: str
+    edge_type: str
+    note: str | None = None
+
+
+class GraphMetricsOut(BaseModel):
+    risk_score: int
+    attack_paths: int
+    tier0_exposure: int
+    reachable_privileged: int
+    average_path_cost: float
+    shortest_path_hops: int | None = None
+
+
+class SimulationRequest(BaseModel):
+    edge_id: str | None = None
+    edge_ids: list[str] = Field(default_factory=list)
+    action: str = Field(default="remove", pattern="^remove$")
+    reason: str = Field(default="Remove excessive privilege", max_length=200)
+
+    def targets(self) -> list[str]:
+        ids = [*self.edge_ids]
+        if self.edge_id:
+            ids.append(self.edge_id)
+        return list(dict.fromkeys(ids))
+
+
+class SimulationCompareRequest(BaseModel):
+    candidates: list[list[str]] = Field(default_factory=list)
+
+
+class SimulationOut(BaseModel):
+    before: GraphMetricsOut
+    after: GraphMetricsOut
+    simulation: dict[str, Any]
+    risk_reduction: int
+    risk_reduction_pct: float
+    paths_eliminated: int
+    tier0_exposure_reduction: int
+    eliminated_paths: list[AttackPathOut]
+    remaining_paths: list[AttackPathOut]
+    notice: str
+
+
+# --- compromise impact --------------------------------------------------
+class EndpointOut(BaseModel):
+    endpoint_id: str
+    hostname: str
+    operating_system: str | None = None
+    domain_controller: bool = False
+    identity: str | None = None
+    identity_source: str = "none"
+
+
+class BlastRadiusOut(BaseModel):
+    users: int
+    groups: int
+    computers: int
+    privileged_targets: int
+    total: int
+
+
+class CompromiseImpactOut(BaseModel):
+    endpoint: str
+    endpoint_sid: str | None = None
+    status: str
+    identity: str | None = None
+    identity_sid: str | None = None
+    identity_source: str
+    risk: str
+    risk_score: int
+    blast_radius: BlastRadiusOut
+    tier0_exposed: bool
+    attack_path_count: int
+    shortest_path: list[str]
+    shortest_path_hops: int | None = None
+    paths: list[AttackPathOut]
+    notes: list[str]
