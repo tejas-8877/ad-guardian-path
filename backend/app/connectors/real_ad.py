@@ -305,8 +305,8 @@ class RealADConnector(ADConnector):
         return ADPrincipal(
             object_sid=sid,
             dn=dn,
-            sam_account_name=str(a.get("sAMAccountName") or a.get("displayName") or dn),
-            display_name=str(a.get("displayName") or a.get("sAMAccountName") or dn),
+            sam_account_name=str(a.get("sAMAccountName") or a.get("name") or a.get("displayName") or dn),
+            display_name=str(a.get("displayName") or a.get("name") or a.get("sAMAccountName") or dn),
             principal_type=ptype,
             enabled=not bool(uac & UAC_ACCOUNTDISABLE),
             is_admin_count=bool(a.get("adminCount")),
