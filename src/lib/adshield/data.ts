@@ -502,3 +502,109 @@ export const DEMO_ACCOUNTS: Record<string, { password: string; user: SessionUser
     },
   },
 };
+
+/** Directed, abusable relationship — mirrors ADEdge in the FastAPI backend. */
+export interface Edge {
+  sourceSid: string;
+  targetSid: string;
+  edgeType: string;
+  note?: string;
+}
+
+export const EDGES: Edge[] = [
+  { sourceSid: sid(1103), targetSid: sid(1201), edgeType: "MemberOf" },
+  { sourceSid: sid(1107), targetSid: sid(1201), edgeType: "MemberOf" },
+  { sourceSid: sid(1104), targetSid: sid(1202), edgeType: "MemberOf" },
+  { sourceSid: sid(1106), targetSid: sid(551), edgeType: "MemberOf" },
+  {
+    sourceSid: sid(1201),
+    targetSid: sid(1106),
+    edgeType: "ForceChangePassword",
+    note: "Helpdesk can reset svc_backup without knowing the old password",
+  },
+  {
+    sourceSid: sid(1201),
+    targetSid: sid(1105),
+    edgeType: "WriteDacl",
+    note: "Helpdesk can rewrite the svc_sql ACL",
+  },
+  {
+    sourceSid: sid(1105),
+    targetSid: sid(1104),
+    edgeType: "GenericWrite",
+    note: "svc_sql can set an SPN on t.admin (targeted Kerberoast)",
+  },
+  {
+    sourceSid: sid(1104),
+    targetSid: sid(512),
+    edgeType: "GenericAll",
+    note: "Unexpected GenericAll on Domain Admins",
+  },
+  { sourceSid: sid(551), targetSid: sid(1001), edgeType: "AdminTo", note: "Backup Operators local admin on DC01" },
+  { sourceSid: sid(512), targetSid: sid(1001), edgeType: "AdminTo" },
+  {
+    sourceSid: sid(1105),
+    targetSid: sid(1002),
+    edgeType: "AllowedToDelegate",
+    note: "Unconstrained delegation on SQL01",
+  },
+  { sourceSid: sid(1002), targetSid: sid(1001), edgeType: "HasDCSync", note: "DS-Replication-Get-Changes-All" },
+  { sourceSid: sid(1108), targetSid: sid(1003), edgeType: "CanRDP" },
+  { sourceSid: sid(1106), targetSid: sid(1003), edgeType: "HasSession", note: "Privileged session cached on WKS-042" },
+  { sourceSid: sid(1003), targetSid: sid(1106), edgeType: "HasSession", note: "Credentials harvestable from LSASS" },
+  { sourceSid: sid(1105), targetSid: sid(1002), edgeType: "HasSession" },
+  { sourceSid: sid(1301), targetSid: sid(1003), edgeType: "GpLink" },
+];
+
+export type EndpointStatus = "clean" | "suspicious" | "malicious" | "unknown";
+
+export interface EndpointRecord {
+  endpointId: string;
+  hostname: string;
+  os?: string;
+  status: EndpointStatus;
+  lastSeen: string;
+  detection?: string;
+  loggedOnUser?: string;
+}
+
+/** Endpoint telemetry inventory (mirrors GET /api/endpoints). */
+export const ENDPOINTS: EndpointRecord[] = [
+  {
+    endpointId: sid(1003),
+    hostname: "WKS-042",
+    os: "Windows 10 Pro (21H2, EOL)",
+    status: "malicious",
+    lastSeen: "2 minutes ago",
+    detection: "Mimikatz-like credential access (YARA: CredDump_Generic)",
+    loggedOnUser: "r.patel",
+  },
+  {
+    endpointId: sid(1002),
+    hostname: "SQL01",
+    os: "Windows Server 2019",
+    status: "suspicious",
+    lastSeen: "11 minutes ago",
+    detection: "Packed binary dropped in C:\\Windows\\Temp (entropy 7.82)",
+    loggedOnUser: "svc_sql",
+  },
+  {
+    endpointId: sid(1001),
+    hostname: "DC01",
+    os: "Windows Server 2022",
+    status: "clean",
+    lastSeen: "just now",
+  },
+];
+
+/** Directory connection banner (mirrors GET /api/ad/health). */
+export const AD_CONNECTION = {
+  connected: true,
+  connector: "mock" as "mock" | "real",
+  domain: DOMAIN,
+  server: `DC01.${DOMAIN}`,
+  protocol: "LDAPS",
+  port: 636,
+  baseDn: "DC=corp,DC=local",
+  latencyMs: 12,
+};
