@@ -10,14 +10,21 @@ import {
   ServerCog,
   ShieldAlert,
   ShieldCheck,
+  Radar,
 } from "lucide-react";
 import { ROLE_LABEL, useAuth } from "@/lib/adshield/auth";
-import { DOMAIN } from "@/lib/adshield/data";
+import { AD_CONNECTION, DOMAIN } from "@/lib/adshield/data";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, permission: "view:findings" },
   { to: "/attack-paths", label: "Attack Paths", icon: Network, permission: "view:attack_paths" },
+  {
+    to: "/compromise-impact",
+    label: "Compromise Impact",
+    icon: Radar,
+    permission: "view:attack_paths",
+  },
   { to: "/assets", label: "Assets", icon: ServerCog, permission: "view:assets" },
   { to: "/findings", label: "Findings", icon: ShieldAlert, permission: "view:findings" },
   { to: "/malware", label: "Malware Triage", icon: BugPlay, permission: "submit:malware_sample" },
@@ -64,6 +71,25 @@ export function AppShell({
               {DOMAIN}
             </p>
           </div>
+        </div>
+        <div className="border-b border-sidebar-border px-5 py-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            Directory connection
+          </p>
+          <p className="mt-1 flex items-center gap-2 text-xs">
+            <span
+              className={cn(
+                "size-2 rounded-full",
+                AD_CONNECTION.connected ? "bg-severity-low" : "bg-severity-critical",
+              )}
+            />
+            <span className="font-mono">
+              {AD_CONNECTION.connector.toUpperCase()} · {AD_CONNECTION.protocol}:{AD_CONNECTION.port}
+            </span>
+          </p>
+          <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
+            {AD_CONNECTION.server} · {AD_CONNECTION.latencyMs} ms
+          </p>
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {NAV.filter((item) => can(item.permission)).map((item) => {

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssetsRouteImport } from './routes/assets'
 import { Route as AttackPathsRouteImport } from './routes/attack-paths'
+import { Route as CompromiseImpactRouteImport } from './routes/compromise-impact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FindingsRouteImport } from './routes/findings'
 import { Route as MalwareRouteImport } from './routes/malware'
@@ -30,6 +31,11 @@ const AssetsRoute = AssetsRouteImport.update({
 const AttackPathsRoute = AttackPathsRouteImport.update({
   id: '/attack-paths',
   path: '/attack-paths',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompromiseImpactRoute = CompromiseImpactRouteImport.update({
+  id: '/compromise-impact',
+  path: '/compromise-impact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRoute
   '/attack-paths': typeof AttackPathsRoute
+  '/compromise-impact': typeof CompromiseImpactRoute
   '/dashboard': typeof DashboardRoute
   '/findings': typeof FindingsRoute
   '/malware': typeof MalwareRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRoute
   '/attack-paths': typeof AttackPathsRoute
+  '/compromise-impact': typeof CompromiseImpactRoute
   '/dashboard': typeof DashboardRoute
   '/findings': typeof FindingsRoute
   '/malware': typeof MalwareRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRoute
   '/attack-paths': typeof AttackPathsRoute
+  '/compromise-impact': typeof CompromiseImpactRoute
   '/dashboard': typeof DashboardRoute
   '/findings': typeof FindingsRoute
   '/malware': typeof MalwareRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/attack-paths'
+    | '/compromise-impact'
     | '/dashboard'
     | '/findings'
     | '/malware'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/attack-paths'
+    | '/compromise-impact'
     | '/dashboard'
     | '/findings'
     | '/malware'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/attack-paths'
+    | '/compromise-impact'
     | '/dashboard'
     | '/findings'
     | '/malware'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssetsRoute: typeof AssetsRoute
   AttackPathsRoute: typeof AttackPathsRoute
+  CompromiseImpactRoute: typeof CompromiseImpactRoute
   DashboardRoute: typeof DashboardRoute
   FindingsRoute: typeof FindingsRoute
   MalwareRoute: typeof MalwareRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/attack-paths'
       fullPath: '/attack-paths'
       preLoaderRoute: typeof AttackPathsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compromise-impact': {
+      id: '/compromise-impact'
+      path: '/compromise-impact'
+      fullPath: '/compromise-impact'
+      preLoaderRoute: typeof CompromiseImpactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssetsRoute: AssetsRoute,
   AttackPathsRoute: AttackPathsRoute,
+  CompromiseImpactRoute: CompromiseImpactRoute,
   DashboardRoute: DashboardRoute,
   FindingsRoute: FindingsRoute,
   MalwareRoute: MalwareRoute,
