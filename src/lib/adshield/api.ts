@@ -112,14 +112,15 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
+  const init: RequestInit = { method, headers };
+  if (signal) init.signal = signal;
+  if (formData) init.body = formData;
+  else if (body !== undefined) init.body = JSON.stringify(body);
+
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/api${path}`, {
-      method,
-      headers,
-      signal,
-      body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
-    });
+    res = await fetch(`${API_BASE_URL}/api${path}`, init);
+
   } catch {
     throw new ApiError(0, "network", FRIENDLY.network);
   }
