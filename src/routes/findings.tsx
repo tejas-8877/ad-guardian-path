@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/adshield/AppShell";
+import { DemoBadge, ErrorBlock, LoadingBlock } from "@/components/adshield/states";
 import { Panel, SeverityBadge } from "@/components/adshield/ui-bits";
+import { useLive } from "@/lib/adshield/auth";
 import { FINDINGS } from "@/lib/adshield/data";
 import type { Severity } from "@/lib/adshield/data";
+import { useFindings } from "@/lib/adshield/hooks";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/findings")({
