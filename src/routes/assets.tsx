@@ -149,6 +149,7 @@ function AssetsPage() {
           )}
         </Panel>
       </div>
+      )}
     </AppShell>
   );
 }
