@@ -31,7 +31,11 @@ function AssetsPage() {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Principal | null>(null);
 
-  const items = PRINCIPALS.filter(
+  const live = useLive();
+  const query = useAssets(type);
+
+  const source = live ? (query.data ?? []) : PRINCIPALS;
+  const items = source.filter(
     (p) =>
       (type === "all" || p.type === type) &&
       (q === "" ||
@@ -41,9 +45,19 @@ function AssetsPage() {
   return (
     <AppShell
       title="Directory Assets"
-      subtitle="Objects enumerated over LDAPS with their security-relevant attributes"
+      subtitle={
+        live
+          ? "Objects from the latest backend collection with their security-relevant attributes"
+          : "Fixture inventory — the backend is not connected"
+      }
       requiredPermission="view:assets"
     >
+      {!live && <DemoBadge className="mb-4" />}
+      {live && query.isPending && <LoadingBlock label="Loading directory objects…" />}
+      {live && query.isError && (
+        <ErrorBlock error={query.error} onRetry={() => void query.refetch()} />
+      )}
+      {(!live || query.isSuccess) && (
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel
           className="lg:col-span-2"
