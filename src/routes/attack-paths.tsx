@@ -8,6 +8,7 @@ import { useLive } from "@/lib/adshield/auth";
 import { FINDINGS } from "@/lib/adshield/data";
 import { useBackendGraph, useFindings } from "@/lib/adshield/hooks";
 import {
+  AttackGraph,
   edgeId,
   liveGraph,
   measure,
@@ -147,7 +148,7 @@ function AttackPathsPage() {
             {simulation.removedEdges.map((e) => (
               <li key={edgeId(e)} className="font-mono text-[11px] text-muted-foreground">
                 <Scissors className="mr-1 inline size-3 text-severity-high" />
-                {liveGraph.name(e.sourceSid)} —{e.edgeType}→ {liveGraph.name(e.targetSid)}
+                {source.name(e.sourceSid)} —{e.edgeType}→ {source.name(e.targetSid)}
               </li>
             ))}
           </ul>
