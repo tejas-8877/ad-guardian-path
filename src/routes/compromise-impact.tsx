@@ -2,9 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowRight, Crosshair, Laptop, ShieldAlert, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/adshield/AppShell";
+import { DemoBadge, ErrorBlock, LoadingBlock } from "@/components/adshield/states";
 import { Panel, StatTile } from "@/components/adshield/ui-bits";
+import { useLive } from "@/lib/adshield/auth";
 import { ENDPOINTS, type EndpointRecord } from "@/lib/adshield/data";
 import { analyzeEndpoint, liveGraph, type CompromiseImpact } from "@/lib/adshield/graph";
+import { useCompromiseImpact, useEndpoints } from "@/lib/adshield/hooks";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/compromise-impact")({
