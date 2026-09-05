@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/adshield/AppShell";
+import { DemoBadge, ErrorBlock, LoadingBlock } from "@/components/adshield/states";
 import { Panel, SeverityBadge, StatTile } from "@/components/adshield/ui-bits";
-import { useAuth, ROLE_LABEL } from "@/lib/adshield/auth";
+import { useAuth, ROLE_LABEL, useLive } from "@/lib/adshield/auth";
 import { FINDINGS, PRINCIPALS } from "@/lib/adshield/data";
+import { useAssets, useMyHygiene } from "@/lib/adshield/hooks";
 
 export const Route = createFileRoute("/my-hygiene")({
   head: () => ({
