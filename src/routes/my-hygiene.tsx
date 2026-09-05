@@ -23,9 +23,16 @@ export const Route = createFileRoute("/my-hygiene")({
 
 function HygienePage() {
   const { user } = useAuth();
+  const live = useLive();
+  const query = useMyHygiene();
+  const assets = useAssets("user");
   if (!user) return null;
-  const principal = PRINCIPALS.find((p) => p.objectSid === user.objectSid);
-  const mine = FINDINGS.filter((f) => f.principalSid === user.objectSid);
+
+  const principals = live ? (assets.data ?? []) : PRINCIPALS;
+  const principal = principals.find((p) => p.objectSid === user.objectSid);
+  const mine = live
+    ? (query.data ?? [])
+    : FINDINGS.filter((f) => f.principalSid === user.objectSid);
 
   return (
     <AppShell
@@ -33,6 +40,13 @@ function HygienePage() {
       subtitle="Findings scoped strictly to your own directory object"
       requiredPermission="view:own_hygiene"
     >
+      {!live && <DemoBadge className="mb-4" />}
+      {live && query.isPending && <LoadingBlock label="Loading your account hygiene…" />}
+      {live && query.isError && (
+        <ErrorBlock error={query.error} onRetry={() => void query.refetch()} />
+      )}
+      {(!live || query.isSuccess) && (
+      <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="Account" value={user.samAccountName} hint={ROLE_LABEL[user.role]} />
         <StatTile
