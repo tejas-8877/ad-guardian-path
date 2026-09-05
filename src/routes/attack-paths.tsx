@@ -2,9 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowRight, FlaskConical, RotateCcw, Scissors, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/adshield/AppShell";
+import { DemoBadge, ErrorBlock, LoadingBlock } from "@/components/adshield/states";
 import { Panel, SeverityBadge, StatTile } from "@/components/adshield/ui-bits";
+import { useLive } from "@/lib/adshield/auth";
 import { FINDINGS } from "@/lib/adshield/data";
+import { useBackendGraph, useFindings } from "@/lib/adshield/hooks";
 import {
+  AttackGraph,
   edgeId,
   liveGraph,
   measure,
@@ -34,17 +38,29 @@ export const Route = createFileRoute("/attack-paths")({
   component: AttackPathsPage,
 });
 
+const EMPTY_GRAPH = new AttackGraph([], []);
+
 function AttackPathsPage() {
   const [removed, setRemoved] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const live = useLive();
+  const graphQuery = useBackendGraph();
+  const findingsQuery = useFindings();
 
-  const baseline = useMemo(() => measure(liveGraph, FINDINGS), []);
+  const ready = live ? !!graphQuery.data && !!findingsQuery.data : true;
+  const source = live ? (graphQuery.data ?? EMPTY_GRAPH) : liveGraph;
+  const findings = live ? (findingsQuery.data ?? []) : FINDINGS;
+
+  const baseline = useMemo(() => measure(source, findings), [source, findings]);
   const simulation = useMemo(
-    () => (removed.length ? simulateRemoval(liveGraph, removed, "Analyst remediation candidate", FINDINGS) : null),
-    [removed],
+    () =>
+      removed.length
+        ? simulateRemoval(source, removed, "Analyst remediation candidate", findings)
+        : null,
+    [source, findings, removed],
   );
 
-  const graph = useMemo(() => (removed.length ? liveGraph.without(removed) : liveGraph), [removed]);
+  const graph = useMemo(() => (removed.length ? source.without(removed) : source), [source, removed]);
   const paths = useMemo(() => graph.allTier0Paths(12), [graph]);
   const eliminated = simulation?.eliminatedPaths ?? [];
 
@@ -56,12 +72,27 @@ function AttackPathsPage() {
     setRemoved((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  const error = graphQuery.error ?? findingsQuery.error;
+
   return (
     <AppShell
       title="Attack Paths"
       subtitle="Dijkstra traversal over MemberOf, ACL, delegation and session edges"
       requiredPermission="view:attack_paths"
     >
+      {!live && <DemoBadge className="mb-4" />}
+      {live && !ready && !error && <LoadingBlock label="Building the attack graph from the backend…" />}
+      {live && error && (
+        <ErrorBlock
+          error={error}
+          onRetry={() => {
+            void graphQuery.refetch();
+            void findingsQuery.refetch();
+          }}
+        />
+      )}
+      {ready && (
+      <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label="Domain risk score"
@@ -117,7 +148,7 @@ function AttackPathsPage() {
             {simulation.removedEdges.map((e) => (
               <li key={edgeId(e)} className="font-mono text-[11px] text-muted-foreground">
                 <Scissors className="mr-1 inline size-3 text-severity-high" />
-                {liveGraph.name(e.sourceSid)} —{e.edgeType}→ {liveGraph.name(e.targetSid)}
+                {source.name(e.sourceSid)} —{e.edgeType}→ {source.name(e.targetSid)}
               </li>
             ))}
           </ul>
@@ -231,6 +262,8 @@ function AttackPathsPage() {
           )}
         </Panel>
       </div>
+      </>
+      )}
     </AppShell>
   );
 }

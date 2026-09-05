@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/adshield/AppShell";
+import { DemoBadge, ErrorBlock, LoadingBlock } from "@/components/adshield/states";
 import { Panel, SeverityBadge, StatTile } from "@/components/adshield/ui-bits";
-import { useAuth, ROLE_LABEL } from "@/lib/adshield/auth";
+import { useAuth, ROLE_LABEL, useLive } from "@/lib/adshield/auth";
 import { FINDINGS, PRINCIPALS } from "@/lib/adshield/data";
+import { useAssets, useMyHygiene } from "@/lib/adshield/hooks";
 
 export const Route = createFileRoute("/my-hygiene")({
   head: () => ({
@@ -21,9 +23,16 @@ export const Route = createFileRoute("/my-hygiene")({
 
 function HygienePage() {
   const { user } = useAuth();
+  const live = useLive();
+  const query = useMyHygiene();
+  const assets = useAssets("user");
   if (!user) return null;
-  const principal = PRINCIPALS.find((p) => p.objectSid === user.objectSid);
-  const mine = FINDINGS.filter((f) => f.principalSid === user.objectSid);
+
+  const principals = live ? (assets.data ?? []) : PRINCIPALS;
+  const principal = principals.find((p) => p.objectSid === user.objectSid);
+  const mine = live
+    ? (query.data ?? [])
+    : FINDINGS.filter((f) => f.principalSid === user.objectSid);
 
   return (
     <AppShell
@@ -31,6 +40,13 @@ function HygienePage() {
       subtitle="Findings scoped strictly to your own directory object"
       requiredPermission="view:own_hygiene"
     >
+      {!live && <DemoBadge className="mb-4" />}
+      {live && query.isPending && <LoadingBlock label="Loading your account hygiene…" />}
+      {live && query.isError && (
+        <ErrorBlock error={query.error} onRetry={() => void query.refetch()} />
+      )}
+      {(!live || query.isSuccess) && (
+      <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="Account" value={user.samAccountName} hint={ROLE_LABEL[user.role]} />
         <StatTile
@@ -76,6 +92,8 @@ function HygienePage() {
           </ul>
         )}
       </Panel>
+      </>
+      )}
     </AppShell>
   );
 }

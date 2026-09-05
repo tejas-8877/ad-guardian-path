@@ -132,3 +132,18 @@ export function useCompromiseImpact(endpointId: string | null, status: string) {
     retry: false,
   });
 }
+
+/** Backend remediation simulation — analytical only, never mutates AD. */
+export function useSimulateRemediation() {
+  return useMutation({
+    mutationFn: (edgeIds: string[]) => api.simulateRemediation(edgeIds),
+  });
+}
+
+/** "What if this identity were compromised?" — analytical only. */
+export function useWhatIfIdentity() {
+  return useMutation({
+    mutationFn: (identity: string) =>
+      api.whatIfIdentity(identity, "compromised").then(toCompromiseImpact),
+  });
+}

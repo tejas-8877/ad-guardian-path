@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/adshield/AppShell";
+import { DemoBadge, ErrorBlock, LoadingBlock } from "@/components/adshield/states";
 import { Panel, SeverityBadge } from "@/components/adshield/ui-bits";
+import { useLive } from "@/lib/adshield/auth";
 import { FINDINGS } from "@/lib/adshield/data";
 import type { Severity } from "@/lib/adshield/data";
+import { useFindings } from "@/lib/adshield/hooks";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/findings")({
@@ -31,8 +34,11 @@ function FindingsPage() {
   const [severity, setSeverity] = useState<Severity | "all">("all");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const live = useLive();
+  const query = useFindings();
 
-  const items = FINDINGS.filter(
+  const source = live ? (query.data ?? []) : FINDINGS;
+  const items = source.filter(
     (f) =>
       (severity === "all" || f.severity === severity) &&
       (q === "" ||
@@ -42,9 +48,19 @@ function FindingsPage() {
   return (
     <AppShell
       title="Findings"
-      subtitle="Rule engine output — each finding maps to a MITRE ATT&CK technique"
+      subtitle={
+        live
+          ? "Rule engine output from the backend — each finding maps to a MITRE ATT&CK technique"
+          : "Fixture findings — the backend is not connected"
+      }
       requiredPermission="view:findings"
     >
+      {!live && <DemoBadge className="mb-4" />}
+      {live && query.isPending && <LoadingBlock label="Loading findings from the backend…" />}
+      {live && query.isError && (
+        <ErrorBlock error={query.error} onRetry={() => void query.refetch()} />
+      )}
+      {(!live || query.isSuccess) && (
       <Panel
         action={
           <input
@@ -109,6 +125,7 @@ function FindingsPage() {
           )}
         </ul>
       </Panel>
+      )}
     </AppShell>
   );
 }
