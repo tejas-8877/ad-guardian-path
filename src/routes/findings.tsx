@@ -125,6 +125,7 @@ function FindingsPage() {
           )}
         </ul>
       </Panel>
+      )}
     </AppShell>
   );
 }
