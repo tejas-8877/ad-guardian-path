@@ -261,6 +261,8 @@ function AttackPathsPage() {
           )}
         </Panel>
       </div>
+      </>
+      )}
     </AppShell>
   );
 }
