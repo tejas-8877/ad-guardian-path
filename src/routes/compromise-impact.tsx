@@ -44,19 +44,44 @@ const RISK_TONE: Record<CompromiseImpact["risk"], string> = {
 };
 
 function CompromiseImpactPage() {
-  const [selected, setSelected] = useState<EndpointRecord>(ENDPOINTS[0]!);
+  const live = useLive();
+  const endpointsQuery = useEndpoints();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [whatIf, setWhatIf] = useState(false);
 
-  const impact = useMemo(
+  const endpoints: EndpointRecord[] = live
+    ? (endpointsQuery.data ?? []).map((e) => ({
+        endpointId: e.endpoint_id,
+        hostname: e.hostname,
+        os: e.operating_system ?? "unknown",
+        status: "unknown",
+        lastSeen: "latest collection",
+        ...(e.identity ? { loggedOnUser: e.identity } : {}),
+      }))
+    : ENDPOINTS;
+
+  const selected = endpoints.find((e) => e.endpointId === selectedId) ?? endpoints[0] ?? null;
+
+  const backendImpact = useCompromiseImpact(
+    live ? (selected?.endpointId ?? null) : null,
+    whatIf ? "compromised" : (selected?.status ?? "suspicious"),
+  );
+
+  const localImpact = useMemo(
     () =>
-      analyzeEndpoint(
-        liveGraph,
-        selected.hostname,
-        whatIf ? "compromised" : selected.status,
-        selected.loggedOnUser,
-      ),
+      selected
+        ? analyzeEndpoint(
+            liveGraph,
+            selected.hostname,
+            whatIf ? "compromised" : selected.status,
+            selected.loggedOnUser,
+          )
+        : null,
     [selected, whatIf],
   );
+
+  const impact: CompromiseImpact | null = live ? (backendImpact.data ?? null) : localImpact;
+  const error = endpointsQuery.error ?? backendImpact.error;
 
   return (
     <AppShell
@@ -64,10 +89,22 @@ function CompromiseImpactPage() {
       subtitle="Endpoint telemetry correlated to directory identity, blast radius and Tier-0 reachability"
       requiredPermission="view:attack_paths"
     >
+      {!live && <DemoBadge className="mb-4" />}
+      {live && error && (
+        <ErrorBlock
+          error={error}
+          onRetry={() => {
+            void endpointsQuery.refetch();
+            void backendImpact.refetch();
+          }}
+        />
+      )}
+      {live && !error && !impact && <LoadingBlock label="Correlating endpoint to directory identity…" />}
+      {impact && selected && (
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title="Endpoints">
           <ul className="space-y-2">
-            {ENDPOINTS.map((e) => (
+            {endpoints.map((e) => (
               <li key={e.endpointId}>
                 <button
                   onClick={() => {
