@@ -108,7 +108,7 @@ function CompromiseImpactPage() {
               <li key={e.endpointId}>
                 <button
                   onClick={() => {
-                    setSelected(e);
+                    setSelectedId(e.endpointId);
                     setWhatIf(false);
                   }}
                   className={cn(
