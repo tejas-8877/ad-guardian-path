@@ -12,8 +12,10 @@ import {
   ShieldCheck,
   Radar,
 } from "lucide-react";
-import { ROLE_LABEL, useAuth } from "@/lib/adshield/auth";
+import { ROLE_LABEL, useAuth, useLive } from "@/lib/adshield/auth";
+import { errorMessage } from "@/lib/adshield/api";
 import { AD_CONNECTION, DOMAIN } from "@/lib/adshield/data";
+import { useAdHealth, useCollectAd } from "@/lib/adshield/hooks";
 import { cn } from "@/lib/utils";
 
 const NAV = [
