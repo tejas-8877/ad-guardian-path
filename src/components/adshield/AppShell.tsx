@@ -12,8 +12,10 @@ import {
   ShieldCheck,
   Radar,
 } from "lucide-react";
-import { ROLE_LABEL, useAuth } from "@/lib/adshield/auth";
+import { ROLE_LABEL, useAuth, useLive } from "@/lib/adshield/auth";
+import { errorMessage } from "@/lib/adshield/api";
 import { AD_CONNECTION, DOMAIN } from "@/lib/adshield/data";
+import { useAdHealth, useCollectAd } from "@/lib/adshield/hooks";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -45,6 +47,9 @@ export function AppShell({
   const { user, ready, logout, can } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const live = useLive();
+  const health = useAdHealth();
+  const collect = useCollectAd();
 
   useEffect(() => {
     if (ready && !user) navigate({ to: "/" });
@@ -76,20 +81,72 @@ export function AppShell({
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             Directory connection
           </p>
-          <p className="mt-1 flex items-center gap-2 text-xs">
-            <span
-              className={cn(
-                "size-2 rounded-full",
-                AD_CONNECTION.connected ? "bg-severity-low" : "bg-severity-critical",
+          {live ? (
+            health.isPending ? (
+              <p className="mt-1 text-xs text-muted-foreground">Checking directory…</p>
+            ) : health.isError || !health.data ? (
+              <p className="mt-1 flex items-center gap-2 text-xs text-severity-critical">
+                <span className="size-2 rounded-full bg-severity-critical" />
+                Backend unreachable
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 flex items-center gap-2 text-xs">
+                  <span
+                    className={cn(
+                      "size-2 rounded-full",
+                      health.data.connected ? "bg-severity-low" : "bg-severity-critical",
+                    )}
+                  />
+                  <span className="font-mono">
+                    {health.data.connector.toUpperCase()} · {health.data.protocol}:{health.data.port}
+                  </span>
+                </p>
+                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
+                  {health.data.domain} · {health.data.server}
+                  {health.data.latency_ms != null && ` · ${health.data.latency_ms} ms`}
+                </p>
+                {health.data.error && (
+                  <p className="mt-1 font-mono text-[10px] text-severity-critical">
+                    {health.data.error}
+                  </p>
+                )}
+              </>
+            )
+          ) : (
+            <>
+              <p className="mt-1 flex items-center gap-2 text-xs">
+                <span className="size-2 rounded-full bg-severity-medium" />
+                <span className="font-mono">DEMO DATA · MOCK MODE</span>
+              </p>
+              <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
+                {AD_CONNECTION.server} (fixture)
+              </p>
+            </>
+          )}
+          {live && (
+            <>
+              <button
+                onClick={() => collect.mutate()}
+                disabled={collect.isPending}
+                className="mt-3 w-full rounded-md border border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+              >
+                {collect.isPending ? "Collecting…" : "Collect / refresh AD data"}
+              </button>
+              {collect.isError && (
+                <p className="mt-1 font-mono text-[10px] text-severity-critical">
+                  {errorMessage(collect.error)}
+                </p>
               )}
-            />
-            <span className="font-mono">
-              {AD_CONNECTION.connector.toUpperCase()} · {AD_CONNECTION.protocol}:{AD_CONNECTION.port}
-            </span>
-          </p>
-          <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
-            {AD_CONNECTION.server} · {AD_CONNECTION.latencyMs} ms
-          </p>
+              {collect.isSuccess && collect.data && (
+                <p className="mt-1 font-mono text-[10px] text-severity-low">
+                  {collect.data.users + collect.data.groups + collect.data.computers} objects ·{" "}
+                  {collect.data.findings} findings · risk {collect.data.risk_score} ·{" "}
+                  {collect.data.duration_ms} ms
+                </p>
+              )}
+            </>
+          )}
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {NAV.filter((item) => can(item.permission)).map((item) => {
