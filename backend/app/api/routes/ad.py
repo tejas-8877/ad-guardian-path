@@ -12,7 +12,7 @@ from collections import Counter
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import RequireAssets, RequireSecurityAdmin, SettingsDep
+from app.api.deps import CurrentUserDep, RequireSecurityAdmin, SettingsDep
 from app.connectors.base import (
     ADAuthenticationError,
     ADConfigurationError,
@@ -45,7 +45,8 @@ def _http_error(exc: Exception) -> HTTPException:
 
 
 @router.get("/health", response_model=ADHealthOut)
-def ad_health(_user: RequireAssets, settings: SettingsDep) -> ADHealthOut:
+def ad_health(_user: CurrentUserDep, settings: SettingsDep) -> ADHealthOut:
+    """Directory health is readable by any authenticated role; no assets permission needed."""
     try:
         connector = get_connector()
         health = connector.health()
