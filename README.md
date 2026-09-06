@@ -96,3 +96,45 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Running ADShield (backend + frontend)
+
+Terminal 1 — FastAPI backend:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn app.main:app --reload
+```
+
+Terminal 2 — React frontend:
+
+```bash
+npm run dev
+```
+
+- Frontend: http://localhost:8080
+- Backend: http://127.0.0.1:8000
+- Swagger: http://127.0.0.1:8000/docs
+
+### VITE_API_BASE_URL
+
+The frontend talks to the backend through a single centralized API client
+(`src/lib/adshield/api.ts`). The backend URL comes from `VITE_API_BASE_URL`
+(see `.env.example`); it defaults to `http://127.0.0.1:8000` in development.
+Copy `.env.example` to `.env` and change that one value to point at another
+backend. No secrets belong in these files.
+
+### Live mode vs demo mode
+
+Logging in hits `POST /api/auth/login`; the JWT is stored client-side and sent
+as `Authorization: Bearer <token>` on every request. In this **live** mode all
+pages (dashboard, findings, assets, attack paths, compromise impact, hygiene)
+read backend data, and the sidebar shows live `GET /api/ad/health` plus a
+"Collect / refresh AD data" button calling `POST /api/ad/collect`.
+
+If the backend is unreachable, the demo accounts still work and the UI is
+clearly marked **Demo data / mock mode** using `src/lib/adshield/data.ts`.
+Failed live requests are never silently replaced with fixtures — they surface
+an explicit error with retry. The remediation simulator and compromise-impact
+what-if remain analytical only: no Active Directory changes are performed.
