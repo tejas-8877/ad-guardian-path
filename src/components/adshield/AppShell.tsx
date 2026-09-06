@@ -47,6 +47,9 @@ export function AppShell({
   const { user, ready, logout, can } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const live = useLive();
+  const health = useAdHealth();
+  const collect = useCollectAd();
 
   useEffect(() => {
     if (ready && !user) navigate({ to: "/" });
