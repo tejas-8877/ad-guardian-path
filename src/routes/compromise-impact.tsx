@@ -258,6 +258,7 @@ function CompromiseImpactPage() {
           </Panel>
         </div>
       </div>
+      )}
     </AppShell>
   );
 }
